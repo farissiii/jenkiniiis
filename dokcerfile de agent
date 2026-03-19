@@ -1,0 +1,29 @@
+FROM jenkins/inbound-agent:latest-jdk17
+
+USER root
+
+# --- COUCHE 1 : Les outils système (ne changent JAMAIS) ---
+# Docker va mettre cette couche en cache. Elle ne sera plus jamais réinstallée.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    curl \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# --- COUCHE 2 : Les binaires fixes (changent RAREMENT) ---
+# Si tu modifies la suite, Docker garde cette couche en mémoire.
+RUN curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh \
+    && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+    && chmod +x kubectl && mv kubectl /usr/local/bin/
+
+# --- COUCHE 3 : Les nouveaux outils (C'est ici que tu ajoutes tes nouveautés) ---
+# Si demain tu veux ajouter "Helm" ou "Trivy", ajoute-le ICI.
+# Docker utilisera le cache pour tout ce qui est au-dessus !
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    vim \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN usermod -aG docker jenkins
+USER jenkins
