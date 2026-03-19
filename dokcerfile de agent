@@ -27,3 +27,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 RUN usermod -aG docker jenkins
 USER jenkins
+
+
+***************
+# --- ÉTAPE 1 : Le "Downloader" ---
+# On utilise Alpine (5 Mo) juste pour télécharger kubectl
+FROM alpine:latest AS downloader
+RUN apk add --no-cache curl
+RUN curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+RUN chmod +x kubectl
+
+# --- ÉTAPE 2 : Ton image finale ---
+FROM khaliiiiid/jenkins-agent-python:latest
+
+USER root
+
+# On copie UNIQUEMENT le fichier kubectl depuis l'étape précédente
+# Pas besoin d'installer curl, pas de cache apt, l'image reste minuscule !
+COPY --from=downloader /kubectl /usr/local/bin/kubectl
+
+# On s'assure que l'utilisateur jenkins peut l'exécuter
+USER jenkins
