@@ -48,3 +48,27 @@ COPY --from=downloader /kubectl /usr/local/bin/kubectl
 
 # On s'assure que l'utilisateur jenkins peut l'exécuter
 USER jenkins
+
+**********
+FROM jenkins/inbound-agent:latest-jdk17
+
+USER root
+
+# Règle 2 : Combiner toutes les commandes RUN en une seule couche (Layer)
+# Règle 3 : Nettoyer les caches immédiatement après l'installation
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    curl \
+    git \
+    && curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh \
+    && curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+    && chmod +x kubectl \
+    && mv kubectl /usr/local/bin/ \
+    && apt-get purge -y --auto-remove curl \
+    && rm -rf /var/lib/apt/lists/* /tmp/* get-docker.sh
+
+# Règle 4 : Gérer les groupes et permissions proprement
+RUN usermod -aG docker jenkins
+
+USER jenkins
